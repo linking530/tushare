@@ -10,23 +10,33 @@ from sqlalchemy.orm import sessionmaker
 from pandas.io.pytables import HDFStore
 from sqlalchemy.types import VARCHAR
 import tushare as ts
-#股票列表获取股票列表
-df = ts.get_stock_basics()
+
+#numArr = 
+
+#ts.get_hist_data('159905') #一次性获取全部日k线数据
+
+#df = ts.get_today_all()
+df = ts.get_hist_data('510900') 
 #print(type(df))
-df.to_csv("stock_basics.csv",encoding="gb18030")
+df.to_csv("../data/510900.csv",encoding="gb18030")
+
+
+engine = create_engine('mysql://root:root@127.0.0.1/tushare-master?charset=utf8')
+
+
+df.to_sql('510900',engine,if_exists='replace',dtype={'date':VARCHAR(length=20)})
+
+
+
 # print(df.head(1))
 # print(df.describe())
 # for idx, row in df.iterrows():
     # print idx, row
 
-engine = create_engine('mysql://root:root@127.0.0.1/tushare-master?charset=utf8')
-
 #		engine = create_engine('mysql://root:jimmy1@127.0.0.1/mystock?charset=utf8')
 #     db = 		MySQLdb.connect(host='127.0.0.1',user='root',passwd='jimmy1',db="mystock",charset="utf8")
 #     df.to_sql('TICK_DATA',con=db,flavor='mysql')
 #     db.close()
-df.to_sql('stock_basics',engine,if_exists='replace',dtype={'code':VARCHAR(length=6)})
-	
 
 # engine = create_engine('mysql://pass@localhost/test'echo=True)
 # DBSession = sessionmaker(bind=engine)
