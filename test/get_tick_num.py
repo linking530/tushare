@@ -16,15 +16,15 @@ import tushare as ts
 #ts.get_hist_data('159905') #一次性获取全部日k线数据
 
 #df = ts.get_today_all()
-df = ts.get_hist_data('510900') 
+df = ts.get_hist_data('501029') 
 #print(type(df))
-df.to_csv("../data/510900.csv",encoding="gb18030")
+df.to_csv("../data/501029.csv",encoding="gb18030")
 
 
 engine = create_engine('mysql://root:root@127.0.0.1/tushare-master?charset=utf8')
 
 
-df.to_sql('510900',engine,if_exists='replace',dtype={'date':VARCHAR(length=20)})
+df.to_sql('501029',engine,if_exists='replace',dtype={'date':VARCHAR(length=20)})
 
 
 
