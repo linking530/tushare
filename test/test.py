@@ -84,9 +84,7 @@ print("cur_index:",cur_index)
 row = df.loc[df['date'] == cur_index]
 
 #建立初始仓位
-price0 = row['low'].astype('float64')
-
-print('price0',price0)
+price0 = 1.16
 
 use_money = price0*3000
 total_money = total_money - use_money
@@ -102,38 +100,58 @@ for i in range(-10,10):
  	df_row = pd.DataFrame([[price,aim_price, aim_all_price,0]], columns=['price','aim_price','aim_all_price','num'])
 	#print([price,aim_price, aim_all_price,0])
 	price = price0*(1+i*0.05)
-	df_busk = df_busk.append(df_row,ignore_index=True)
+	df_busk = df_busk.append(df_row,ignore_index=True,sort=True)
+
+df_busk.to_csv("../data/510900_sell.csv",encoding="gb18030")
+
+print(df_busk)
 
 
-#86400s
-cur_price_index = 0
-for i in range(1, 100):
-	timestamp
+for i in range(1, 300):
 	cur_index = time.strftime('%Y-%m-%d',time.localtime(timestamp))
 	#print("cur_index:",cur_index)
+	#取得当前日期的价格
 	row = df.loc[df['date'] == cur_index]
-	#print("price:",price0*(1+(cur_price_index-1)*0.05),row['high'].astype('float64'),row['low'].astype('float64'))
 	
-	if  price0.any()*(1+(cur_price_index-1)*0.05) < row['high'].any() and (price0*(1+(cur_price_index-1)*0.05) ).any()>row['low'].any():
-			
-			use_money = price0*(1+(cur_price_index-1)*0.05) *5000
+	#遍历股票仓位表
+	for index_busk, row_busk in df_busk.iterrows():   # 获取每行的index、row
+		# print("-------------------------------------")
+		# print(type(row_busk['price']))
+		# print("-------------------------------------")
+		# print(row['high'])
+		# print("-------------------------------------")
+		# print(row['low'])
+		# print("-------------------------------------")
+		# print(row['high'].values[0])
+		# print("-------------------------------------")
+		if row['high'].empty :
+			continue
+		if  row_busk['price']<row['high'].values[0] and row_busk['price']>row['low'].values[0]:
+			buy_num = 5000
+			use_money = row_busk['price']*buy_num
+			if total_money<use_money:
+				buy_num = total_money/row_busk['price']*100
+				buy_num = buy_num*100
+				
+			use_money = row_busk['price']*buy_num	
 			total_money = total_money - use_money
-			take_buck = take_buck+5000
-			cur_price_index = cur_price_index-1
-			row2 = df_busk.loc[df_busk['price'] == price0*(1+(cur_price_index-1)*0.05)]
-			row2['num'] = row2['num'] +5000
-			continue
-		
-	
-	if price0.any()*(1+(cur_price_index+1)*0.05) < row['high'].any() and price0.any()*(1+(cur_price_index+1)*0.05) >row['low'].any():
-			use_money = price0*(1+(cur_price_index+1)*0.05) *5000
-			total_money = total_money + use_money
-			take_buck = take_buck-5000
-			cur_price_index = cur_price_index+1
-			row2 = df_busk.loc[df_busk['price'] == price0*(1+(cur_price_index+1)*0.05)]
-			row2['num'] = row2['num'] +5000
-			continue
-	#遍历当前价格列表看是否有合适买卖的东西，先检查卖，再检查买
+			take_buck = take_buck+buy_num
+			print('buy:',index_busk,row_busk['price'],buy_num)			
+			curnum= df_busk.loc[index_busk,'num']-buy_num	
+			df_busk.loc[index_busk,'num']  = curnum
+			
+	# for index_busk, row_busk in df_busk.iterrows():   # 获取每行的index、row	
+		# if  row_busk['aim_price'].item() < row['high'].item() & row_busk['aim_price'].item()>row['low'].item():
+			# sell_num = 5000	#基本卖出股数
+			# if sell_num.any()<row_busk['num'].any():
+				# sell_num = row_busk['num'].astype('float64')
+				
+			# get_money = row_busk['aim_price']*sell_num	
+			# total_money = total_money + get_money
+			# take_buck = take_buck-sell_num
+			# df_busk.iloc[index_busk,'num'] = df_busk.iloc[index_busk,'num'] -sell_num	
+			# print('sell:',row_busk['aim_price'],sell_num)
+
 
 	timestamp= timestamp+86400
 	
@@ -145,17 +163,13 @@ else:
 
 
 print(total_money)
-print(price0*(1+(cur_price_index)*0.05)*take_buck)
 
 
-
- #row = pd.DataFrame([[total_money,price0*(1+(cur_price_index)*0.05)*take_buck]], columns=['total_money0','take_buck0'])
- #df_busk = df_busk.append(df_row,ignore_index=True)
 
 
 #一天86400秒
 
-df_busk.to_csv("../data/510900_sell.csv",encoding="gb18030")
+#df_busk.to_csv("../data/510900_sell.csv",encoding="gb18030")
 
 
 
