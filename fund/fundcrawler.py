@@ -1,35 +1,55 @@
-# -*- coding:UTF-8 -*-
+#-*-coding:utf-8-*-
 import requests
 import time
-from fake_useragent import UserAgent
+#from fake_useragent import UserAgent
 import re
 import threading
 import random
 import os
+import sys
+import codecs
+import csv
+import sys
+import unittest
+import tushare.stock.trading as fd
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from pandas.io.pytables import HDFStore
+from sqlalchemy.types import VARCHAR
+import tushare as ts
+import pandas as pd
+import time
 
+reload(sys)
 
-def get_fund_list():
+sys.setdefaultencoding('utf-8')
+#基金列表
+fund_list_pd=pd.DataFrame(columns=['id','name'])
+
+def get_fund_list(fund_list_pd):
     """爬取简单的基金代码名称目录"""
-    ua = UserAgent()
-    header = {"User-Agent": ua.random}
+    #ua = UserAgent()
+    #header = {"User-Agent": ua.random}
     page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
-                        'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0', headers=header)
-
+                        'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0')
+                        
+    print('fund_list_pd page.encoding:',page.encoding)
     # 基金目录
     fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
-    
+
     # 保存到文件
     fund_save = dict()
     count = 0
     for i in fund_list:
         count += 1
         fund_save[i[1:7]] = i[10:-1]
-        print("No."+str(count)+"  "+i[1:7]+"  "+i[10:-1])
+        #print("No."+str(count)+"  "+i[1:7]+"  "+i[10:-1])	
 
-    with open('fund_simple.csv', 'w') as f:
-        for key, value in fund_save.items():
-            f.write(key + ',' + value + ',\n')
+    for key, value in fund_save.items():
+        fund_list_pd = fund_list_pd.append({'id':key, 'name':value}, ignore_index=True)	
 
+    fund_list_pd.to_csv("../data/fund_list.csv",encoding="gb18030")
 
 def get_achievement(code, sign):
     """用于爬取基金的收益率和基金经理的信息"""
@@ -41,8 +61,8 @@ def get_achievement(code, sign):
 
     achievement = []
     if sign > 0:
-        ua = UserAgent()
-        header = {"User-Agent": ua.random}
+        #ua = UserAgent()
+        #header = {"User-Agent": ua.random}
         try:
             try:
                 page = requests.get('http://fund.eastmoney.com/' + code + '.html', headers=header, proxies=proxy_all)
@@ -55,8 +75,10 @@ def get_achievement(code, sign):
                             proxy['err_count'] += 1
                 except ValueError:
                     pass
-                page = requests.get('http://fund.eastmoney.com/' + code + '.html', headers=header)
+                page = requests.get('http://fund.eastmoney.com/' + code + '.html')
+                #print('http://fund.eastmoney.com/' + code + '.html')
             page.encoding = 'utf-8'
+            print('page.encoding:',page.encoding)
             re_text = page.text
         except Exception as e:
             print(e)
@@ -65,10 +87,15 @@ def get_achievement(code, sign):
             re_text = ''
 
         sign2 = 1
+
+        #print(re_text)
         # 基金的收益率
         tem = re.search('近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?'
                         '\d+\.\d{2}%)|--).*?近3年：.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?成立来：'
                         '.*?((-?\d+\.\d{2}%)|--).*?基金类型', re_text)
+        with open('re_text.txt', 'w') as f:
+            f.write(re_text)
+
         if not tem:
             # 基金为保本型基金
             sign2 = 0
@@ -86,6 +113,7 @@ def get_achievement(code, sign):
         tem2 = re.search('</td>  <td class="td03">(.+?)</td>  <td class="td04 bold (?:ui-color-(?:red|green)|)">'
                          '(-?\d+\.\d{2}%)</td></tr>', re_text)
         try:
+            print(tem)
             # 保存基金收益率
             if sign2 == 1:
                 achievement.append(tem.group(1))
@@ -131,7 +159,7 @@ def get_achievement(code, sign):
                 try:
                     page2 = requests.get(i)
                     page2.encoding = 'utf-8'
-                    re_text = page2.text
+                    re_text = page2.text.encode('gbk', 'ignore')
                 except:
                     time.sleep(2)
                     re_text = ''
@@ -163,7 +191,9 @@ def thread_get_past_performance(code, name, thread_index_fund_file_lock, thread_
     # 爬取收益、基金经理信息
     tem, sign = get_achievement(code, 3)
     fund_all_msg = [code, name] + tem
-
+    
+    print(fund_all_msg)
+    
     # 保存文件
     if sign == 1:
         # 指数型/股票型等基金
@@ -270,11 +300,12 @@ def no_data_handle(fund_with_achievement):
                 code, name, one_month, three_month, six_month, one_year, three_year, from_st, _, this_tenure_time, \
                 this_return, all_tenure_time, _ = i.split(',')
             except ValueError:
-                code, name, *_ = i.split(',')
-                one_month = '??'
+                #code, name, *_ = i.split(',')
+                code, name = i.split(',')
+                one_month = '-'
 
             # 当基金信息为未知时(??)
-            if one_month == '??':
+            if one_month == '-':
                 sign = 0
                 with open('fund_need_handle.csv', 'a') as f2:
                     f2.write(code+','+name+','+'\n')
@@ -364,7 +395,7 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 
 
 if __name__ == '__main__':
-    get_fund_list()
+    get_fund_list(fund_list_pd)
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -372,16 +403,18 @@ if __name__ == '__main__':
     #     for i in f.readlines()[1:]:
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
+    
+    get_achievement('002249',3)
 
-    get_past_performance()
-    no_data_handle('index_fund_with_achievement.csv')
-    no_data_handle('guaranteed_fund_with_achievement.csv')
+    #get_past_performance()
+    #no_data_handle('index_fund_with_achievement.csv')
+    #no_data_handle('guaranteed_fund_with_achievement.csv')
 
-    # 对基金的筛选设置
-    choice_cretertion_return = {'近1月收益': 1.60, '近3月收益': -5.36, '近6月收益': 0, '近1年收益': 0,
-                                '近3年收益': -3.30
-        , '成立来收益/保本期收益': 0, '本基金任职收益': 0}
-    choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
+    #对基金的筛选设置
+    # choice_cretertion_return = {'近1月收益': 1.60, '近3月收益': -5.36, '近6月收益': 0, '近1年收益': 0,
+                                # '近3年收益': -3.30
+        # , '成立来收益/保本期收益': 0, '本基金任职收益': 0}
+    # choice_cretertion_time = {'本基金任职时间': [1, 0], '累计任职时间': [3, 0]}
 
-    # 筛选后的文件为fund_choice.csv，不可修改，若还需要对保本型基金进来筛选，需要先备份
-    data_analysis('index_fund_with_achievement.csv', choice_cretertion_return, choice_cretertion_time)
+    #筛选后的文件为fund_choice.csv，不可修改，若还需要对保本型基金进来筛选，需要先备份
+    # data_analysis('index_fund_with_achievement.csv', choice_cretertion_return, choice_cretertion_time)
