@@ -20,17 +20,19 @@ from sqlalchemy.types import VARCHAR
 import tushare as ts
 import pandas as pd
 import time
+from bs4 import BeautifulSoup
 
 reload(sys)
 
 sys.setdefaultencoding('utf-8')
 #基金列表
 fund_list_pd=pd.DataFrame(columns=['id','name'])
-
-def get_fund_list(fund_list_pd):
+achievement_pd=pd.DataFrame(columns=['id','name','近1月','近3月','近6月','近1年','近3年','成立来'])
+def get_fund_list():
     """爬取简单的基金代码名称目录"""
     #ua = UserAgent()
     #header = {"User-Agent": ua.random}
+    global fund_list_pd
     page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
                         'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0')
                         
@@ -51,7 +53,9 @@ def get_fund_list(fund_list_pd):
 
     fund_list_pd.to_csv("../data/fund_list.csv",encoding="gb18030")
 
-def get_achievement(code, sign):
+def get_achievement(code, name,sign):
+    global achievement_pd
+    print('get_achievement')
     """用于爬取基金的收益率和基金经理的信息"""
     try:
         proxy = random.choice(proxies_http_list)  # 代理ip
@@ -59,7 +63,6 @@ def get_achievement(code, sign):
     except IndexError:
         proxy_all = None
 
-    achievement = []
     if sign > 0:
         #ua = UserAgent()
         #header = {"User-Agent": ua.random}
@@ -88,102 +91,35 @@ def get_achievement(code, sign):
 
         sign2 = 1
 
-        #print(re_text)
-        # 基金的收益率
-        tem = re.search('近1月：.*?((-?\d+\.\d{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?'
-                        '\d+\.\d{2}%)|--).*?近3年：.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?成立来：'
-                        '.*?((-?\d+\.\d{2}%)|--).*?基金类型', re_text)
-        with open('re_text.txt', 'w') as f:
-            f.write(re_text)
+        #print(re_text)                      
+        soup=BeautifulSoup(re_text,'lxml')    
+        tags=soup.find_all(class_=re.compile("ui-font-middle ui-color-"))
+        tagslen = len(tags)
+        m1 = m3 = m6 = y1 = y3 = allt ='1'
+        #print(tags)
+        if tagslen>2 :
+            m1=tags[2].string       
+        if tagslen>4 :
+            m3=tags[4].string
+        if tagslen>6 :        
+            m6=tags[6].string
+        if tagslen>3 :   
+            y1=tags[3].string
+        if tagslen>5 :   
+            y3=tags[5].string
+        if tagslen>7 :   
+            allt = tags[7].string
 
-        if not tem:
-            # 基金为保本型基金
-            sign2 = 0
-            tem = re.search('保本期收益.*?((-?\d+\.\d{2}%)|--).*?近6月：.*?((-?\d+\.\d{2}%)|--).*?近1月：.*?((-?\d+\.\d'
-                            '{2}%)|--).*?近1年：.*?((-?\d+\.\d{2}%)|--).*?近3月：.*?((-?\d+\.\d{2}%)|--).*?近3年：.*?(('
-                            '-?\d+\.\d{2}%)|--).*?基金类型', re_text)
-            if re.search('封闭期', re_text) or re.search('本基金已终止', re_text):
-                # 基金为有封闭期的固定收益基金或已终止的基金
-                sign2 = 2
-                return list(), sign2
-        # 基金经理和个人信息链接
-        tem4 = re.search('<td class="td02">(?:<a href="(.*?)">(.+?)</a>&nbsp;&nbsp;)(?:(?:<a href="(.*?)">(.+?)'
-                         '</a>&nbsp;&nbsp;)|)', re_text)
-        # 基金经理在本基金的任职时间和收益率
-        tem2 = re.search('</td>  <td class="td03">(.+?)</td>  <td class="td04 bold (?:ui-color-(?:red|green)|)">'
-                         '(-?\d+\.\d{2}%)</td></tr>', re_text)
-        try:
-            print(tem)
-            # 保存基金收益率
-            if sign2 == 1:
-                achievement.append(tem.group(1))
-                achievement.append(tem.group(5))
-                achievement.append(tem.group(9))
-                achievement.append(tem.group(3))
-                achievement.append(tem.group(7))
-                achievement.append(tem.group(11))
-            else:
-                # 保本型基金
-                achievement.append(tem.group(5))
-                achievement.append(tem.group(9))
-                achievement.append(tem.group(3))
-                achievement.append(tem.group(7))
-                achievement.append(tem.group(11))
-                achievement.append(tem.group(1))
+        #name =tags[1].string
+        
+        print(code,m1,m3,m6,y1,y3,allt)       
+        #achievement = achievement.append({'id':key, 'name':value}, ignore_index=True)	
+        achievement_pd = achievement_pd.append({'id':code, 'name':name,'近1月':m1,'近3月':m3,'近6月':m6,'近1年':y1,'近3年':y3,'成立来':allt}, ignore_index=True)
+        #rece=tags[8].string
 
-            # 对可能的多个基金经理分别记录以便后续爬取
-            manager_link_list = list()
-            manager_list = list()
-            i = 1
-            for j in tem4.groups():
-                if j:
-                    if i % 2 == 0:
-                        manager_list.append(j)
-                    else:
-                        manager_link_list.append(j)
-                i += 1
-            # 保存基金经理名字
-            manager = None
-            for i in manager_list:
-                if i != manager_list[0]:
-                    manager += '/' + i
-                else:
-                    manager = i
-            achievement.append(manager)
-            achievement.append(tem2.group(1))
-            achievement.append(tem2.group(2))
-
-            # 分别打开基金经理的个人信息页，保存他们的总任职时间
-            manager_link = None
-            for i in manager_link_list:
-                try:
-                    page2 = requests.get(i)
-                    page2.encoding = 'utf-8'
-                    re_text = page2.text.encode('gbk', 'ignore')
-                except:
-                    time.sleep(2)
-                    re_text = ''
-                tem3 = re.search('<span>累计任职时间：</span>(.*?)<br />', re_text)
-                if i != manager_link_list[0]:
-                    manager_link += '/' + tem3.group(1)
-                else:
-                    manager_link = tem3.group(1)
-            achievement.append(manager_link)
-        except:
-            # 出错后的重试
-            time.sleep(random.randint(1, 3))
-            achievement = get_achievement(code, sign-1)
-    else:
-        # 重复出错3次后，放弃。相应信息为未知(??)
-        for i in range(10):
-            achievement.append('??')
-
-    if sign == 3:
-        # 最后返回的两元组，收益集合以及是否为保本型基金的标志
-        return achievement, sign2
-    else:
-        # 递归只返回收益集合
-        return achievement
+        # with open('re_text.txt', 'w') as f:
+            # f.write(tags.prettify())
+        return achievement_pd
 
 
 def thread_get_past_performance(code, name, thread_index_fund_file_lock, thread_guaranteed_fund_file_lock,):
@@ -395,7 +331,7 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 
 
 if __name__ == '__main__':
-    get_fund_list(fund_list_pd)
+    get_fund_list()
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -404,9 +340,16 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
     
-    get_achievement('002249',3)
-
+    get_achievement('270045','-',3)
+    print(fund_list_pd)
+    for index_busk, row_busk in fund_list_pd.iterrows():   # 获取每行的index、row
+        # if row_busk['id'].empty :
+            # continue
+        get_achievement(row_busk['id'],row_busk['name'],3)
+        time.sleep(5)    
+        achievement_pd.to_csv("../data/achievement_pd.csv",encoding="gb18030")    
     #get_past_performance()
+    print(achievement_pd)
     #no_data_handle('index_fund_with_achievement.csv')
     #no_data_handle('guaranteed_fund_with_achievement.csv')
 
