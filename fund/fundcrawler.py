@@ -33,13 +33,16 @@ def get_fund_list():
     #ua = UserAgent()
     #header = {"User-Agent": ua.random}
     global fund_list_pd
+
     page = requests.get('http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,'
-                        'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0')
-                        
+                            'desc&page=1,9999&feature=|&dt=1536654761529&atfc=&onlySale=0')
+     
+                      
     print('fund_list_pd page.encoding:',page.encoding)
+    #print('page.text:',page.text)
     # 基金目录
     fund_list = re.findall(r'"[0-9]{6}",".+?"', page.text)
-
+    #print(fund_list)
     # 保存到文件
     fund_save = dict()
     count = 0
@@ -341,13 +344,16 @@ if __name__ == '__main__':
     #         proxies_http_list.append(tem)
     
     get_achievement('270045','-',3)
-    print(fund_list_pd)
-    for index_busk, row_busk in fund_list_pd.iterrows():   # 获取每行的index、row
-        # if row_busk['id'].empty :
-            # continue
-        get_achievement(row_busk['id'],row_busk['name'],3)
-        time.sleep(5)    
-        achievement_pd.to_csv("../data/achievement_pd.csv",encoding="gb18030")    
+    print(fund_list_pd)  
+    
+    
+    achievement_pd.to_csv("../data/achievement_pd.csv",encoding="gb18030")    
+    
+    # for index_busk, row_busk in fund_list_pd.iterrows():   # 获取每行的index、row
+        # get_achievement(row_busk['id'],row_busk['name'],3)
+        # time.sleep(1)    
+        # achievement_pd.to_csv("../data/achievement_pd.csv",encoding="gb18030")  
+        
     #get_past_performance()
     print(achievement_pd)
     #no_data_handle('index_fund_with_achievement.csv')
