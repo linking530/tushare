@@ -25,6 +25,8 @@ from bs4 import BeautifulSoup
 reload(sys)
 
 sys.setdefaultencoding('utf-8')
+#前面补0
+#'{:06d}'.format(2168)
 #基金列表
 fund_list_pd=pd.DataFrame(columns=['id','name'])
 achievement_pd=pd.DataFrame(columns=['id','name','近1月','近3月','近6月','近1年','近3年','成立来'])
@@ -52,7 +54,7 @@ def get_fund_list():
         #print("No."+str(count)+"  "+i[1:7]+"  "+i[10:-1])	
 
     for key, value in fund_save.items():
-        fund_list_pd = fund_list_pd.append({'id':key, 'name':value}, ignore_index=True)	
+        fund_list_pd = fund_list_pd.append({'id':str(key), 'name':value}, ignore_index=True)	
 
     fund_list_pd.to_csv("../data/fund_list.csv",encoding="gb18030")
 
@@ -116,7 +118,8 @@ def get_achievement(code, name,sign):
         #name =tags[1].string
         
         print(code,m1,m3,m6,y1,y3,allt)       
-        #achievement = achievement.append({'id':key, 'name':value}, ignore_index=True)	
+        #achievement = achievement.append({'id':key, 'name':value}, ignore_index=True)
+        print("code:",code,type(code))
         achievement_pd = achievement_pd.append({'id':code, 'name':name,'近1月':m1,'近3月':m3,'近6月':m6,'近1年':y1,'近3年':y3,'成立来':allt}, ignore_index=True)
         #rece=tags[8].string
 
@@ -334,7 +337,7 @@ def data_analysis(fund_with_achievement, choice_cretertion_return, choice_creter
 
 
 if __name__ == '__main__':
-    get_fund_list()
+    #get_fund_list()
 
     # 打开保存在proxies_http.txt的http代理ip
     proxies_http_list = list()
@@ -343,7 +346,7 @@ if __name__ == '__main__':
     #         tem = {'ip': i[:-1], 'err_count': 0}
     #         proxies_http_list.append(tem)
     
-    get_achievement('270045','-',3)
+    get_achievement('001661','-',3)
     print(fund_list_pd)  
     
     

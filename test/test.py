@@ -40,9 +40,11 @@ import time
 # isin返回一系列的数值,如果要选择不符合这个条件的数值使用~
 # # df.loc[~df['column_name'].isin(some_values)]
 #price	num	aim_price	aim_all_price
+sell_time = 0
+buy_time = 0
 columns1=['price','aim_price','aim_all_price','num','max_num']
 
-df=pd.read_csv("../data/159905.csv",encoding="gb18030")
+df=pd.read_csv("../data/510900.csv",encoding="gb18030")
 
 df_busk=pd.DataFrame(columns=columns1)
 #提取行索引
@@ -74,7 +76,7 @@ print('time.mktime(begin): %f' % time.mktime(begin))
 timestamp = time.mktime(begin)
 
 #本金10万
-total_money = 100000
+total_money = 20000
 
 use_money = 0
 take_buck = 0
@@ -87,7 +89,7 @@ print("cur_index:",cur_index)
 row = df.loc[df['date'] == cur_index]
 
 #建立初始仓位
-price0 = 1.33
+price0 = 1.1
 
 
 # use_money = price0*3000
@@ -102,10 +104,10 @@ price0 = 1.33
 #0.3('cur_money:', 211140.25999999949)
 price = price0
 cur_price = 0
-for i in range(-10,6):
+for i in range(-15,6):
 	aim_price =  price*1.05
 	aim_all_price = price*1.2
-	max_num = 8000
+	max_num = 5000
 
  	df_row = pd.DataFrame([[price,aim_price, aim_all_price,0,max_num]],columns=columns1)
 	
@@ -150,6 +152,7 @@ for i in range(1, 360*7):
 			take_buck = take_buck+buy_num		
 			curnum= df_busk.loc[index_busk,'num']+buy_num	
 			df_busk.loc[index_busk,'num']  = curnum
+			buy_time = buy_time + 1
 			print('buy:',row['date'],take_buck,index_busk,row_busk['price'],buy_num,use_money,total_money)	
 			print("cur_money:",total_money+cur_price*take_buck,'left:',total_money/(total_money+cur_price*take_buck))
 	for index_busk, row_busk in df_busk.iterrows():   # 获取每行的index、row	
@@ -169,6 +172,7 @@ for i in range(1, 360*7):
 			take_buck = take_buck-sell_num
 			curnum = df_busk.loc[index_busk,'num'] -sell_num	
 			df_busk.loc[index_busk,'num'] = curnum
+			sell_time = sell_time+1
 			print('sell:',row['date'],take_buck,row_busk['aim_price'],sell_num,curnum,get_money,total_money)
 			print("cur_money:",total_money+cur_price*take_buck,'left:',total_money/(total_money+cur_price*take_buck))
 	for index_busk, row_busk in df_busk.iterrows():   # 获取每行的index、row	
@@ -183,6 +187,7 @@ for i in range(1, 360*7):
 			take_buck = take_buck-sell_num
 			curnum = df_busk.loc[index_busk,'num'] -sell_num	
 			df_busk.loc[index_busk,'num'] = curnum
+			sell_time = sell_time+1
 			print('sellall:',row['date'],take_buck,row_busk['aim_price'],sell_num,curnum,get_money,total_money)
 			print("cur_money:",total_money+cur_price*take_buck,'left:',total_money/(total_money+cur_price*take_buck))
 	timestamp= timestamp+86400
@@ -198,7 +203,8 @@ print(df_busk)
 print("cur_money:",total_money+cur_price*take_buck)
 print("take_buck:",take_buck)
 print("total_money:",total_money)
-
+print("sell_time:",sell_time)
+print("buy_time:",buy_time)
 
 #一天86400秒
 
